@@ -1,0 +1,17 @@
+torch>=2.0.1
+transformers>=4.27.1
+pytorch-lightning>=2.0.2
+datasets>=2.11.0
+einops>=0.6.1
+opt-einsum>=3.3.0
+python-dotenv>=1.0.0
+sentencepiece>=0.1.99
+tqdm>=4.65.0
+traitlets>=5.9.0
+wandb>=0.15.12
+numpy>=1.21.0
+scikit-learn>=1.0.0
+rouge-score>=0.1.2
+nltk>=3.7
+omegaconf>=2.2.0
+torch-geometric>=2.0.0
