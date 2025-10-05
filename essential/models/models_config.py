@@ -26,6 +26,8 @@ class LOCOSTConfig_Mamba(PretrainedConfig):
         relative_attention_num_buckets=32,   # or 128 for long contexts
         relative_attention_max_distance=128, # typical default for T5
         max_length=4096,
+        global_block_size=16,
+        local_radius=127,
         # Mamba-specific
         d_conv=4,
         expand=2,
@@ -61,6 +63,8 @@ class LOCOSTConfig_Mamba(PretrainedConfig):
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.relative_attention_max_distance = relative_attention_max_distance
         self.max_length = max_length
+        self.global_block_size = global_block_size
+        self.local_radius = local_radius
 
         # Mamba-specific params
         self.d_conv = d_conv

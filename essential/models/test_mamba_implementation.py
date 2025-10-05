@@ -12,8 +12,6 @@ import os
 # Add the models directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'models'))
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 def test_imports():
     """Test if all required modules can be imported"""
     print("=" * 60)
@@ -87,7 +85,9 @@ def test_config_creation():
             dt_init_floor=1e-4,
             conv_bias=True,
             bias=False,
-            use_fast_path=True
+            use_fast_path=True,
+            global_block_size=16,
+            local_radius=127
         )
         print("✅ Custom config (matching YAML) created successfully")
         print(f"   d_model: {config_custom.d_model}")
@@ -117,7 +117,7 @@ def test_mamba_layer():
         
         # Test forward pass
         batch_size, seq_len = 2, 64
-        hidden_states = torch.randn(batch_size, seq_len, config.d_model)
+        hidden_states = torch.randn(batch_size, seq_len, config.d_model).to(device)
         
         with torch.no_grad():
             outputs = layer(hidden_states)
@@ -160,11 +160,11 @@ def test_mamba_block():
         
         # Test encoder block (uses Mamba)
         config = LOCOSTConfig_Mamba(d_model=512, d_state=128, is_decoder=False)
-        block = LOCOSTBlock_Mamba(config, has_relative_attention_bias=True)
+        block = LOCOSTBlock_Mamba(config, has_relative_attention_bias=True).to(device)
         print("✅ Encoder Mamba block created successfully")
         
         batch_size, seq_len = 2, 32
-        hidden_states = torch.randn(batch_size, seq_len, config.d_model)
+        hidden_states = torch.randn(batch_size, seq_len, config.d_model).to(device)
         
         with torch.no_grad():
             outputs = block(
@@ -182,7 +182,7 @@ def test_mamba_block():
         
         # Test decoder block (uses attention)
         config_decoder = LOCOSTConfig_Mamba(d_model=512, d_state=128, is_decoder=True)
-        block_decoder = LOCOSTBlock_Mamba(config_decoder, has_relative_attention_bias=True)
+        block_decoder = LOCOSTBlock_Mamba(config_decoder, has_relative_attention_bias=True).to(device)
         print("✅ Decoder block created successfully")
         
         # Test decoder block without encoder states (self-attention only)
@@ -230,14 +230,14 @@ def test_full_model():
             expand=2
         )
         
-        model = LOCOSTForConditionalGeneration_Mamba(config)
+        model = LOCOSTForConditionalGeneration_Mamba(config).to(device)
         print("✅ Full model created successfully")
         print(f"   Parameters: {sum(p.numel() for p in model.parameters()):,}")
         
         # Test forward pass
         batch_size, seq_len = 2, 16
-        input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len))
-        decoder_input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len))
+        input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(device)
+        decoder_input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(device)
         
         print(f"   Input shape: {input_ids.shape}")
         print(f"   Decoder input shape: {decoder_input_ids.shape}")
@@ -260,7 +260,7 @@ def test_full_model():
         print("✅ Output logits have correct shape")
         
         # Test with labels (training mode)
-        labels = torch.randint(0, config.vocab_size, (batch_size, seq_len))
+        labels = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(device)
         with torch.no_grad():
             outputs_with_loss = model(
                 input_ids=input_ids,
@@ -308,13 +308,13 @@ def test_generation():
             decoder_start_token_id=0
         )
         
-        model = LOCOSTForConditionalGeneration_Mamba(config)
+        model = LOCOSTForConditionalGeneration_Mamba(config).to(device)
         model.eval()
         print("✅ Generation model created successfully")
         
         # Test generation
         batch_size, seq_len = 1, 8
-        input_ids = torch.randint(2, config.vocab_size, (batch_size, seq_len))
+        input_ids = torch.randint(2, config.vocab_size, (batch_size, seq_len)).to(device)
         
         print(f"   Input for generation: {input_ids}")
         
@@ -326,7 +326,8 @@ def test_generation():
                 num_beams=1,
                 do_sample=False,
                 pad_token_id=config.pad_token_id,
-                eos_token_id=config.eos_token_id
+                eos_token_id=config.eos_token_id,
+                use_cache=False
             )
         
         print(f"✅ Generation successful")
@@ -379,7 +380,7 @@ def test_compatibility_with_config():
         
         # Try to create model (this might be too large for actual testing)
         try:
-            model = LOCOSTForConditionalGeneration_Mamba(yaml_config)
+            model = LOCOSTForConditionalGeneration_Mamba(yaml_config).to(device)
             print("✅ Full-size model created successfully")
             print(f"   Parameters: {sum(p.numel() for p in model.parameters()):,}")
         except Exception as e:
@@ -397,6 +398,9 @@ def test_compatibility_with_config():
 
 def main():
     """Run all tests"""
+    global device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     print("LOCOST MAMBA IMPLEMENTATION TEST SUITE")
     print("=" * 60)
     
